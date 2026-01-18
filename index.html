@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Polar H9 Web App</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        #bpm { font-size: 80px; color: #e74c3c; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Frequenza Cardiaca Polar H9</h1>
+    <div id="bpm">-- BPM</div>
+    <button id="connect">Connetti Fascia Cardio</button>
+    <p id="status">Stato: Disconnesso</p>
+
+    <script>
+        const connectButton = document.getElementById('connect');
+        const bpmDisplay = document.getElementById('bpm');
+        const statusDisplay = document.getElementById('status');
+
+        connectButton.addEventListener('click', async () => {
+            try {
+                statusDisplay.textContent = "Cercando il dispositivo...";
+                
+                // Richiesta del dispositivo Bluetooth
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: ['heart_rate'] }]
+                });
+
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService('heart_rate');
+                const characteristic = await service.getCharacteristic('heart_rate_measurement');
+
+                // Inizia a leggere i dati
+                await characteristic.startNotifications();
+                statusDisplay.textContent = "Connesso a: " + device.name;
+
+                characteristic.addEventListener('characteristicvaluechanged', (event) => {
+                    const value = event.target.value;
+                    // Il primo byte è il flag, il secondo è il battito (BPM)
+                    const heartRate = value.getUint8(1);
+                    bpmDisplay.textContent = heartRate + " BPM";
+                });
+
+            } catch (error) {
+                console.error(error);
+                statusDisplay.textContent = "Errore: " + error;
+            }
+        });
+    </script>
+</body>
+</html>
